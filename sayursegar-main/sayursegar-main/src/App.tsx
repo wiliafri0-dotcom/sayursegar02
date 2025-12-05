@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, ShoppingCart, Filter } from 'lucide-react';
+import { Search, ShoppingCart, Filter, Settings, LogOut } from 'lucide-react';
 import CustomerInfoModal from './components/CustomerInfoModal';
 import ProductCard from './components/ProductCard';
 import ShoppingCartComponent from './components/ShoppingCart';
+import AdminPanel from './components/AdminPanel';
 import { supabase } from './lib/supabase';
 import type { Product, CartItem, CustomerInfo } from './types/database';
 
@@ -21,7 +22,10 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showCart, setShowCart] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const isAdmin = customerInfo?.role === 'admin' && customerInfo?.isAuthenticated;
 
   useEffect(() => {
     const savedInfo = sessionStorage.getItem('customerInfo');
@@ -63,6 +67,13 @@ function App() {
 
   const handleCustomerInfoSubmit = (info: CustomerInfo) => {
     setCustomerInfo(info);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('customerInfo');
+    setCustomerInfo(null);
+    setCart([]);
+    setShowAdminPanel(false);
   };
 
   const handleAddToCart = (product: Product, quantity: number) => {
@@ -141,21 +152,54 @@ function App() {
       <header className="bg-white shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-green-600">
-              Rumah Mlijo
-            </h1>
-
-            <button
-              onClick={() => setShowCart(true)}
-              className="relative bg-green-600 hover:bg-green-700 text-white p-3 rounded-full transition duration-200"
-            >
-              <ShoppingCart className="w-6 h-6" />
-              {cartItemCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
-                  {cartItemCount}
-                </span>
+            <div>
+              <h1 className="text-2xl font-bold text-green-600">
+                Rumah Mlijo
+              </h1>
+              {isAdmin && (
+                <p className="text-xs text-gray-600">Admin Mode</p>
               )}
-            </button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {isAdmin ? (
+                <>
+                  <button
+                    onClick={() => setShowAdminPanel(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-200 flex items-center gap-2"
+                  >
+                    <Settings className="w-5 h-5" />
+                    Manage Products
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="bg-gray-600 hover:bg-gray-700 text-white p-3 rounded-full transition duration-200"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowCart(true)}
+                    className="relative bg-green-600 hover:bg-green-700 text-white p-3 rounded-full transition duration-200"
+                  >
+                    <ShoppingCart className="w-6 h-6" />
+                    {cartItemCount > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
+                        {cartItemCount}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="bg-gray-600 hover:bg-gray-700 text-white p-3 rounded-full transition duration-200"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="relative mb-4">
@@ -210,13 +254,20 @@ function App() {
         )}
       </main>
 
-      {showCart && (
+      {showCart && !isAdmin && (
         <ShoppingCartComponent
           cart={cart}
           onUpdateQuantity={handleUpdateQuantity}
           onRemoveItem={handleRemoveItem}
           onClose={() => setShowCart(false)}
           onCheckout={handleCheckout}
+        />
+      )}
+
+      {showAdminPanel && isAdmin && (
+        <AdminPanel
+          onClose={() => setShowAdminPanel(false)}
+          onProductsChange={fetchProducts}
         />
       )}
     </div>
